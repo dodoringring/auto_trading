@@ -24,7 +24,8 @@ def get_ai_decision(df, news_summary, strategy_type):
     print(f"   🤖 [전략 신호] {strategy_type} -> {tech_signal.upper()}")
 
     try:
-        client = genai.Client(api_key)
+        # api_key= 를 꼭 앞에 붙여주세요!
+        client = genai.Client(api_key=api_key)
     except Exception as e:
         print(f"❌ [AI 설정 오류] : {e}")
         return {"decision": "hold", "reason": "API 연결 실패"}
