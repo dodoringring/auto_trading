@@ -1,13 +1,18 @@
 from google import genai
-
+import os
 import json
 import strategy
-import config as cfg
 
 # ==========================================
 # 🔑 API 키 확인
 # ==========================================
-MY_API_KEY = cfg.APP_KEY # 본인 키 입력
+# 1. 일단 컴퓨터 환경변수를 뒤져본다.
+api_key = os.environ.get("GEMINI_API_KEY")
+
+# 2. 만약 아무것도 없다면? (로컬)
+if not api_key:
+    import config
+    api_key = config.GEMINI_API_KEY
 
 def get_ai_decision(df, news_summary, strategy_type):
     print("\n[🔍 AI_BRAIN] AI 분석 모듈 진입")
@@ -19,7 +24,7 @@ def get_ai_decision(df, news_summary, strategy_type):
     print(f"   🤖 [전략 신호] {strategy_type} -> {tech_signal.upper()}")
 
     try:
-        client = genai.Client(api_key=MY_API_KEY)
+        client = genai.Client(api_key)
     except Exception as e:
         print(f"❌ [AI 설정 오류] : {e}")
         return {"decision": "hold", "reason": "API 연결 실패"}
