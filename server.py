@@ -4,6 +4,8 @@ import data_collector
 from ai_brain import get_ai_decision
 import math
 import stock_utils
+import requests
+from bs4 import BeautifulSoup
 
 app = FastAPI()
 
@@ -80,3 +82,25 @@ def analyze_stock(ticker: str = "삼성전자"):
         "rsi": rsi_val,
         "summary": ai_result.get('reason', '분석 이유를 가져오지 못했습니다.')
     }
+
+
+@app.get("/top_stocks")
+def get_top_stocks():
+    try:
+        # 네이버 금융 '검색 상위 종목' 페이지
+        url = "https://finance.naver.com/sise/lastsearch2.naver"
+        # 봇(Bot)으로 오해받지 않게 사람인 척하는 헤더
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        res = requests.get(url, headers=headers)
+        soup = BeautifulSoup(res.text, "lxml")
+
+        # 종목명 태그 찾기
+        items = soup.select("table.type_5 tr a.tltle")
+
+        # 상위 20개만 리스트로 묶기
+        top_20 = [item.text for item in items[:20]]
+        return {"top_stocks": top_20}
+
+    except Exception as e:
+        # 혹시 크롤링에 실패하면 기본 종목들을 내려주도록 방어 코드 작성
+        return {"top_stocks": ["삼성전자", "SK하이닉스", "카카오", "NAVER", "현대차"]}
