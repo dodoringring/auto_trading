@@ -19,7 +19,7 @@ app.add_middleware(
 
 
 @app.get("/analyze")
-def analyze_stock(ticker: str = "삼성전자"):
+def analyze_stock(ticker: str, strategy: str = "volatility"):
     # 🌟 바뀐 부분: 코드와 이름을 둘 다 가져옵니다!
     naver_code, stock_name = stock_utils.get_stock_info(ticker)
 
@@ -64,13 +64,30 @@ def analyze_stock(ticker: str = "삼성전자"):
         final_context += "특이 뉴스 없음.\n"
 
     print("🤖 Gemini AI 종합 판단 요청 중...")
-    ai_result = get_ai_decision(df, final_context, strategy_type="volatility")
+    ai_result = get_ai_decision(df, final_context, strategy_type=strategy)
 
-    rsi_val = 0
-    if 'RSI_14' in df.columns:
-        rsi_val = float(df['RSI_14'].iloc[-1])
-    if math.isnan(rsi_val):
-        rsi_val = 0
+    # 🌟 2. 데이터프레임(df)이 정상적으로 있다면 지표 계산 및 추출!
+    if df is not None and not df.empty:
+        # 혹시 계산이 안 되어 있을까 봐 여기서 확실하게 한 번 더 계산 (append=True)
+        import pandas_ta_classic as ta
+        df.ta.rsi(length=14, append=True)
+        df.ta.macd(append=True)
+
+        # 선생님이 찾으신 완벽한 '안전하게 컬럼 찾기' 로직 적용!
+        rsi_cols = [c for c in df.columns if c.lower().startswith('rsi')]
+        macd_cols = [c for c in df.columns if
+                     c.lower().startswith('macd_') and not c.lower().endswith('h') and not c.lower().endswith('s')]
+
+        # 값이 있으면 최신 값(iloc[-1])을 가져옵니다.
+        if rsi_cols:
+            rsi_val = float(df[rsi_cols[0]].iloc[-1])
+        if macd_cols:
+            macd_val = float(df[macd_cols[0]].iloc[-1])
+
+        # 혹시라도 값이 NaN(결측치)이면 0으로 처리
+        import math
+        if math.isnan(rsi_val): rsi_val = 0
+        if math.isnan(macd_val): macd_val = 0
 
     return {
         "status": "success",
@@ -80,6 +97,7 @@ def analyze_stock(ticker: str = "삼성전자"):
         "current_price": current_price,
         "signal": ai_result.get('decision', 'HOLD').lower(),
         "rsi": rsi_val,
+        "macd": macd_val,  # 🌟 추가된 부분: MACD 값 프론트로 보내기!
         "summary": ai_result.get('reason', '분석 이유를 가져오지 못했습니다.')
     }
 
